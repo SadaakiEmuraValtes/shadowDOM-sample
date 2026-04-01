@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * <lib-header active="books|login|my">
+ * <lib-header active="home|books|login|my">
  * sticky ナビゲーションバー。active 属性でカレントページを指定。
  */
 class LibHeader extends HTMLElement {
@@ -15,7 +15,7 @@ class LibHeader extends HTMLElement {
   connectedCallback()          { this._render(); }
   attributeChangedCallback()   { this._render(); }
 
-  get _activePage() { return this.getAttribute('active') || 'books'; }
+  get _activePage() { return this.getAttribute('active') || 'home'; }
 
   _render() {
     const user   = Store.getSession();
@@ -37,14 +37,9 @@ class LibHeader extends HTMLElement {
           z-index: 100;
         }
         .logo {
-          font-size: 1.2rem;
-          font-weight: 700;
-          flex: 1;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          color: #fff;
-          text-decoration: none;
+          font-size: 1.2rem; font-weight: 700; flex: 1;
+          display: flex; align-items: center; gap: 8px;
+          color: #fff; text-decoration: none;
         }
         nav { display: flex; gap: 4px; }
         .nav-btn {
@@ -56,17 +51,13 @@ class LibHeader extends HTMLElement {
           cursor: pointer;
           font-size: .88rem;
           text-decoration: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
+          display: inline-flex; align-items: center; gap: 6px;
           transition: all .15s;
         }
         .nav-btn:hover { background: rgba(255,255,255,.12); color: #fff; }
         .nav-btn.active {
-          background: rgba(255,255,255,.18);
-          color: #fff;
-          border-color: rgba(255,255,255,.3);
-          font-weight: 700;
+          background: rgba(255,255,255,.18); color: #fff;
+          border-color: rgba(255,255,255,.3); font-weight: 700;
         }
         .sep { width: 1px; background: rgba(255,255,255,.2); height: 28px; }
         .user-badge { font-size: .88rem; color: rgba(255,255,255,.85); display: flex; align-items: center; gap: 6px; }
@@ -76,7 +67,8 @@ class LibHeader extends HTMLElement {
       <header>
         <a class="logo" href="index.html">📚 市立図書館 予約システム</a>
         <nav>
-          <a class="nav-btn ${active === 'books' ? 'active' : ''}" href="index.html">📖 蔵書一覧</a>
+          <a class="nav-btn ${active === 'home'  ? 'active' : ''}" href="index.html">🏠 ホーム</a>
+          <a class="nav-btn ${active === 'books' ? 'active' : ''}" href="books.html">📖 蔵書一覧</a>
           ${user ? `<a class="nav-btn ${active === 'my' ? 'active' : ''}" href="my-page.html">🔖 マイ予約</a>` : ''}
         </nav>
         <div class="sep"></div>

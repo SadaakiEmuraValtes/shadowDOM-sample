@@ -3,7 +3,7 @@
 /**
  * <lib-book-list>
  * 蔵書一覧グリッド。テキスト検索・ジャンルフィルタ機能付き。
- * 初回表示・検索・フィルタ変更時に 3〜8 秒のランダム Loading を発生させる（テスト練習用）。
+ * 初回表示は即時（Loading なし）。検索・フィルタ変更時のみ 2〜5 秒 Loading を発生させる。
  */
 class LibBookList extends HTMLElement {
   constructor() {
@@ -18,17 +18,12 @@ class LibBookList extends HTMLElement {
     this._appliedQuery = '';
     this._appliedGenre = 'all';
 
-    this._loading     = true; // 初回は Loading 状態で開始
+    this._loading     = false; // 初回は Loading なし
     this._searchTimer = null;
   }
 
   connectedCallback() {
     this._render();
-    // 初回 Loading
-    this._searchTimer = setTimeout(() => {
-      this._applyFilter();
-    }, randomDelay());
-
     on('reservation-change', () => {
       if (!this._loading) this._render();
     });
@@ -92,8 +87,9 @@ class LibBookList extends HTMLElement {
         }
         select:focus { border-color: #1a3a5c; }
         .count { font-size: .88rem; color: #94a3b8; white-space: nowrap; }
+        .toolbar.is-loading input,
+        .toolbar.is-loading select { opacity: .6; }
 
-        /* ---- グリッドコンテナ ---- */
         .grid-wrap { position: relative; }
 
         .grid {
@@ -107,7 +103,7 @@ class LibBookList extends HTMLElement {
         }
         .empty-icon { font-size: 3rem; margin-bottom: 12px; }
 
-        /* ---- Loading オーバーレイ ---- */
+        /* Loading オーバーレイ */
         .loading-overlay {
           position: absolute; inset: 0;
           background: rgba(240,244,248,.88);
@@ -125,10 +121,6 @@ class LibBookList extends HTMLElement {
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loading-text { font-size: .9rem; font-weight: 600; color: #475569; }
-
-        /* Loading 中はツールバーの入力を薄く */
-        .toolbar.is-loading input,
-        .toolbar.is-loading select { opacity: .6; }
       </style>
 
       <div class="toolbar ${this._loading ? 'is-loading' : ''}">
@@ -153,43 +145,22 @@ class LibBookList extends HTMLElement {
       </div>
 
       <div class="grid-wrap">
-        <!-- Loading オーバーレイ -->
         ${this._loading ? `
           <div class="loading-overlay" data-testid="book-list-loading">
             <div class="spinner"></div>
-            <div class="loading-text">読み込み中...</div>
+            <div class="loading-text">検索中...</div>
           </div>
         ` : ''}
 
-        <!-- 書籍グリッド（Loading 中は前回結果をそのまま表示） -->
         <div class="grid" data-testid="book-grid">
           ${(() => {
             const books = this._filtered;
-            if (this._loading && this._appliedQuery === '' && this._appliedGenre === 'all') {
-              // 初回 Loading: プレースホルダーカードを表示
-              return Array.from({ length: 12 }, (_, i) => `
-                <div style="
-                  background:#fff; border-radius:12px; height:260px;
-                  box-shadow:0 2px 8px rgba(0,0,0,.07);
-                  background: linear-gradient(90deg,#f1f5f9 25%,#e2e8f0 50%,#f1f5f9 75%);
-                  background-size: 200% 100%;
-                  animation: shimmer 1.4s infinite;
-                "></div>
-              `).join('');
-            }
             if (!this._loading && books.length === 0) {
               return `<div class="empty"><div class="empty-icon">📭</div>該当する蔵書が見つかりません</div>`;
             }
             return books.map(b => `<lib-book-card book-id="${b.id}"></lib-book-card>`).join('');
           })()}
         </div>
-
-        <style>
-          @keyframes shimmer {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-          }
-        </style>
       </div>
     `;
 

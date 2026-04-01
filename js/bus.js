@@ -15,8 +15,8 @@ function on(name, fn) {
 }
 
 /**
- * テスト自動化練習用: 3〜8秒のランダム待ち時間を返す（ミリ秒）
+ * テスト自動化練習用: 2〜5秒のランダム待ち時間を返す（ミリ秒）
  */
 function randomDelay() {
-  return Math.floor(Math.random() * 5000) + 3000;
+  return Math.floor(Math.random() * 3000) + 2000;
 }
