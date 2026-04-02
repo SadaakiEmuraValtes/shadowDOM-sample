@@ -6,6 +6,7 @@
 const BOOKS_KEY        = 'lib_books';
 const RESERVATIONS_KEY = 'lib_reservations';
 const SESSION_KEY      = 'lib_session';
+const CART_KEY         = 'lib_cart';
 
 const DEFAULT_BOOKS = [
   { id:  1, title: '吾輩は猫である',              author: '夏目漱石',        genre: '小説',       stock: 3, cover: '📗' },
@@ -60,6 +61,7 @@ class Store {
   }
   static clearSession() {
     sessionStorage.removeItem(SESSION_KEY);
+    Store.clearCart(); // ログアウト時はカートもクリア
   }
 
   // ----- Auth -----
@@ -69,6 +71,44 @@ class Store {
   /** パスワードなしで ID 指定ログイン（テスト用クイックログイン専用） */
   static loginById(userId) {
     return USERS.find(u => u.id === userId) || null;
+  }
+
+  // ----- Cart（予約選択カゴ・sessionStorage）-----
+  static getCart() {
+    const saved = sessionStorage.getItem(CART_KEY);
+    return saved ? JSON.parse(saved) : [];
+  }
+  /** カートにトグル。追加したら true、削除したら false を返す */
+  static toggleCart(bookId) {
+    const cart = Store.getCart();
+    const idx  = cart.indexOf(bookId);
+    if (idx >= 0) cart.splice(idx, 1);
+    else cart.push(bookId);
+    sessionStorage.setItem(CART_KEY, JSON.stringify(cart));
+    return idx < 0;
+  }
+  static clearCart() {
+    sessionStorage.removeItem(CART_KEY);
+  }
+
+  // ----- Favorites（お気に入り・localStorage per user）-----
+  static _favKey(userId) { return `lib_favs_${userId}`; }
+  static getFavorites(userId) {
+    if (!userId) return [];
+    const saved = localStorage.getItem(Store._favKey(userId));
+    return saved ? JSON.parse(saved) : [];
+  }
+  /** お気に入りをトグル。追加したら true、削除したら false を返す */
+  static toggleFavorite(userId, bookId) {
+    const favs = Store.getFavorites(userId);
+    const idx  = favs.indexOf(bookId);
+    if (idx >= 0) favs.splice(idx, 1);
+    else favs.push(bookId);
+    localStorage.setItem(Store._favKey(userId), JSON.stringify(favs));
+    return idx < 0;
+  }
+  static isFavorite(userId, bookId) {
+    return Store.getFavorites(userId).includes(bookId);
   }
 
   // ----- Availability -----
@@ -87,22 +127,37 @@ class Store {
   }
 
   // ----- Mutations -----
-  static reserve(bookId, userId) {
-    if (Store.availableStock(bookId) <= 0)          return { ok: false, reason: 'stock' };
-    if (Store.isReservedByUser(bookId, userId))     return { ok: false, reason: 'duplicate' };
+  /**
+   * 単冊予約。dueDateIso を省略すると今日から 14 日後になる。
+   * idOffset: 同一ミリ秒で複数予約する際の ID 衝突回避
+   */
+  static reserve(bookId, userId, dueDateIso = null, idOffset = 0) {
+    if (Store.availableStock(bookId) <= 0)      return { ok: false, reason: 'stock' };
+    if (Store.isReservedByUser(bookId, userId)) return { ok: false, reason: 'duplicate' };
     const rs = Store.getReservations();
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + 14);
+    let dueDate = dueDateIso;
+    if (!dueDate) {
+      const d = new Date(); d.setDate(d.getDate() + 14);
+      dueDate = d.toISOString();
+    }
     rs.push({
-      id: Date.now(),
+      id:         Date.now() + idOffset,
       bookId,
       userId,
       reservedAt: new Date().toISOString(),
-      dueDate:    dueDate.toISOString(),
+      dueDate,
       status:     'reserved',
     });
     Store._saveReservations(rs);
     return { ok: true };
+  }
+
+  /** 複数冊を同一返却期限で一括予約 */
+  static reserveMultiple(bookIds, userId, dueDateIso) {
+    return bookIds.map((bookId, i) => ({
+      bookId,
+      ...Store.reserve(bookId, userId, dueDateIso, i),
+    }));
   }
 
   static cancel(reservationId, userId) {
