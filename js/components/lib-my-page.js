@@ -30,6 +30,7 @@ class LibMyPage extends HTMLElement {
   _daysLeft(iso) { return Math.ceil((new Date(iso) - new Date()) / 86400000); }
 
   _statusBadge(r) {
+    if (r.status === 'waiting')   return '<span class="badge waiting">待機中</span>';
     if (r.status === 'reserved' && this._daysLeft(r.dueDate) < 0)
       return '<span class="badge overdue">期限切れ</span>';
     if (r.status === 'reserved')  return '<span class="badge reserved">予約中</span>';
@@ -43,8 +44,8 @@ class LibMyPage extends HTMLElement {
 
     const books   = Store.getBooks();
     const allRs   = Store.getReservations().filter(r => r.userId === user.id);
-    const active  = allRs.filter(r => r.status === 'reserved');
-    const history = allRs.filter(r => r.status !== 'reserved');
+    const active  = allRs.filter(r => r.status === 'reserved' || r.status === 'waiting');
+    const history = allRs.filter(r => r.status !== 'reserved' && r.status !== 'waiting');
     const favIds  = Store.getFavorites(user.id);
     const favBooks = favIds.map(id => books.find(b => b.id === id)).filter(Boolean);
 
@@ -100,6 +101,7 @@ class LibMyPage extends HTMLElement {
         .badge.returned  { background: #dbeafe; color: #1d4ed8; }
         .badge.cancelled { background: #fce7f3; color: #9d174d; }
         .badge.overdue   { background: #fff7ed; color: #c2410c; }
+        .badge.waiting   { background: #fef3c7; color: #92400e; }
 
         .action-btn {
           padding: 5px 14px; border: none; border-radius: 6px;
@@ -190,7 +192,7 @@ class LibMyPage extends HTMLElement {
       <!-- タブコンテンツ -->
       ${this._tab === 'favorites'
         ? this._renderFavoritesTab(favBooks, user)
-        : this._renderReservationTab(this._tab === 'active' ? active : history, user, books)
+        : this._renderReservationTab(this._tab === 'active' ? active : history, books)
       }
     `;
 
@@ -274,7 +276,7 @@ class LibMyPage extends HTMLElement {
       </div>`;
   }
 
-  _renderReservationTab(list, user, books) {
+  _renderReservationTab(list, books) {
     const isActive = this._tab === 'active';
     if (list.length === 0) {
       return `<div class="table-wrap"><div class="empty">📭 ${isActive ? '現在予約している本はありません' : '利用履歴はありません'}</div></div>`;
@@ -290,8 +292,11 @@ class LibMyPage extends HTMLElement {
           </thead>
           <tbody>
             ${list.map(r => {
-              const book = books.find(b => b.id === r.bookId);
-              const dl   = this._daysLeft(r.dueDate);
+              const book     = books.find(b => b.id === r.bookId);
+              const isWait   = r.status === 'waiting';
+              const dl       = isWait ? 0 : this._daysLeft(r.dueDate);
+              const waitPos  = isWait ? Store.getUserWaitingPosition(r.bookId, r.userId) : 0;
+              const waitTotal = isWait ? Store.getWaitingCount(r.bookId) : 0;
               return `
                 <tr data-reservation-id="${r.id}">
                   <td>${book ? book.cover + ' ' + book.title : '不明'}</td>
@@ -299,14 +304,17 @@ class LibMyPage extends HTMLElement {
                   <td>${this._fmtDate(r.reservedAt)}</td>
                   ${isActive
                     ? `<td>
-                         ${this._fmtDate(r.dueDate)}
-                         ${dl >= 0
-                           ? `<span class="due-ok">(あと ${dl} 日)</span>`
-                           : `<span class="due-warn">⚠ 超過</span>`}
+                         ${isWait
+                           ? `<span class="due-ok">${waitPos} 番目待ち（全 ${waitTotal} 人）</span>`
+                           : `${this._fmtDate(r.dueDate)}
+                              ${dl >= 0
+                                ? `<span class="due-ok">(あと ${dl} 日)</span>`
+                                : `<span class="due-warn">⚠ 超過</span>`}`
+                         }
                        </td>
                        <td>${this._statusBadge(r)}</td>
                        <td>
-                         <button class="action-btn return" data-rid="${r.id}" data-testid="return-btn">返却</button>
+                         ${!isWait ? `<button class="action-btn return" data-rid="${r.id}" data-testid="return-btn">返却</button>` : ''}
                          <button class="action-btn cancel" data-rid="${r.id}" data-testid="cancel-btn">キャンセル</button>
                        </td>`
                     : `<td>${this._statusBadge(r)}</td>
