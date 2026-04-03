@@ -104,7 +104,8 @@ class LibBookCard extends HTMLElement {
         .fav-btn:hover { transform: scale(1.3); }
 
         .cover  { font-size: 2.8rem; text-align: center; line-height: 1; padding: 4px 0; }
-        .title  { font-weight: 700; font-size: .95rem; color: #1e293b; line-height: 1.4; }
+        .title  { font-weight: 700; font-size: .95rem; color: #1e293b; line-height: 1.4; text-decoration: none; }
+        .title:hover { color: #1a3a5c; text-decoration: underline; }
         .author { font-size: .82rem; color: #64748b; }
         .status { font-size: .8rem; font-weight: 600; margin-top: auto; }
         .status.ok { color: #16a34a; }
@@ -162,7 +163,7 @@ class LibBookCard extends HTMLElement {
         </div>
 
         <div class="cover">${book.cover}</div>
-        <div class="title">${book.title}</div>
+        <a class="title" href="book-detail.html?id=${book.id}" data-testid="book-title-link-${book.id}">${book.title}</a>
         <div class="author">${book.author}</div>
         <div class="status ${statusClass}">${statusText}</div>
 
